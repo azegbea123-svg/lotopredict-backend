@@ -125,7 +125,7 @@ app.get("/", (req, res) => {
    LANCEMENT SERVEUR
 ================================ */
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🚀 Serveur FootballPredict lancé sur le port ${PORT}`);
 });
