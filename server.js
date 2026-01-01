@@ -22,7 +22,7 @@ async function scrapeSite({ url, matchSelector, homeSelector, awaySelector, time
       timeout: 10000, // 10 secondes max
     });
 
-    const $ = cheerio.load(htmlString);
+    const $ = cheerio.load(data);
     const matches = [];
 
     $(matchSelector).each((i, el) => {
