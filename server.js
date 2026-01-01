@@ -1,7 +1,7 @@
 // server.js
 import express from "express";
 import axios from "axios";
-import cheerio from "cheerio";
+import * as cheerio from "cheerio";
 import cors from "cors";
 import fs from "fs";
 
@@ -22,7 +22,7 @@ async function scrapeSite({ url, matchSelector, homeSelector, awaySelector, time
       timeout: 10000, // 10 secondes max
     });
 
-    const $ = cheerio.load(data);
+    const $ = cheerio.load(htmlString);
     const matches = [];
 
     $(matchSelector).each((i, el) => {
