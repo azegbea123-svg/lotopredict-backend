@@ -23,7 +23,7 @@ const FOOTBALL_APIS = [
   {
     name: "rapidapi-football",
    url: () =>
-  `https://api-football-v1.p.rapidapi.com/v3/fixtures?live=all`,
+  `https://free-api-live-football-data.p.rapidapi.com/football-players-search?search=m`,
 
     headers: {
       "x-rapidapi-key": process.env.RAPIDAPI_KEY,
