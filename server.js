@@ -17,14 +17,17 @@ app.get("/api/football/test", (req, res) => {
 
 app.get("/api/football/matches/today", async (req, res) => {
   try {
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+
     const response = await axios.get(
-      "https://v3.football.api-sports.io/fixtures?date=2025-01-01",
+      `https://v3.football.api-sports.io/fixtures?date=${today}`,
       {
         headers: {
           "x-apisports-key": process.env.FOOTBALL_API_KEY
         }
       }
     );
+
     res.json(response.data);
   } catch (error) {
     console.error(error.message);
