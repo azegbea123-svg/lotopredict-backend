@@ -1,20 +1,15 @@
-import express from "express";
-import { getTodayMatches } from "../services/footballApi.js";
-import { saveMatches } from "../services/saveMatches.js";
+import { getTodayMatches } from "../services/footballService.js";
 
-const router = express.Router();
+export default function initFootballRoutes(app, db) {
+  app.get("/api/football/matches/today", async (req, res) => {
+    try {
+      const matches = await getTodayMatches(db);
+      res.json({ matches });
+    } catch (err) {
+      console.error("Erreur /football/matches/today:", err);
+      res.status(500).json({ error: "Impossible de récupérer les matchs" });
+    }
+  });
 
-router.get("/matches/today", async (req, res) => {
-  try {
-    const matches = await getTodayMatches();
-
-    await saveMatches(matches);
-
-    res.json({ matches });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Erreur football API" });
-  }
-});
-
-export default router;
+  // tu peux ajouter d'autres routes : /predictions, /results, etc.
+}

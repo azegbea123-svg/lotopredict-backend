@@ -1,45 +1,32 @@
 import express from "express";
 import cors from "cors";
+import admin from "firebase-admin";
 import dotenv from "dotenv";
-import footballRoutes from "./routes/football.routes.js";
+import initFootballRoutes from "./routes/football.routes.js";
 
 dotenv.config();
 
+// 🔹 Firebase Admin (réutilisation de PayGate)
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+}
+
+const db = admin.firestore(); // utilisé partout dans ce serveur
+
+// 🔹 Express setup
 const app = express();
-
-app.use(cors());
 app.use(express.json());
-app.use("/api/football", footballRoutes);
+app.use(cors({ origin: "*" }));
 
-app.get("/", (req, res) => {
-  res.send("LotoPredict backend actif");
-});
+// 🔹 FootballPredict routes
+initFootballRoutes(app, db);
 
-app.get("/api/football/test", (req, res) => {
-  res.json({ status: "Football module OK" });
-});
-
-app.get("/api/football/matches/today", async (req, res) => {
-  try {
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-
-    const response = await axios.get(
-      `https://v3.football.api-sports.io/fixtures?date=${today}`,
-      {
-        headers: {
-          "x-apisports-key": process.env.FOOTBALL_API_KEY
-        }
-      }
-    );
-
-    res.json(response.data);
-  } catch (error) {
-    console.error(error.message);
-    res.status(500).json({ error: "Erreur API Football" });
-  }
-});
-
+// 🚀 Lancer le serveur
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log("Backend lancé sur le port", PORT);
+  console.log(`🚀 FootballPredict API en ligne sur port ${PORT}`);
 });
