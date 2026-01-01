@@ -1,136 +1,121 @@
+// server.js
 import express from "express";
+import axios from "axios";
+import cheerio from "cheerio";
 import cors from "cors";
+import fs from "fs";
 
 const app = express();
-app.use(cors());
 app.use(express.json());
+app.use(cors({ origin: "*" }));
 
-/* ===============================
-   CACHE JOURNALIER (ANTI-BAN)
-================================ */
+// --------------------------
+// 🔹 Scraping Functions
+// --------------------------
 
-let dailyCache = {
-  date: null,
-  matches: null,
-  source: null,
-};
+async function scrapeSite({ url, matchSelector, homeSelector, awaySelector, timeSelector }) {
+  try {
+    const { data } = await axios.get(url, {
+      headers: {
+        "User-Agent": "LotoPredict/1.0 (+https://lotopredict.app)",
+      },
+      timeout: 10000, // 10 secondes max
+    });
 
-/* ===============================
-   CONFIG APIs (PRIORITÉ + FALLBACK)
-================================ */
+    const $ = cheerio.load(data);
+    const matches = [];
 
-const FOOTBALL_APIS = [
-  {
-    name: "rapidapi-football",
-   url: () =>
-  `https://free-api-live-football-data.p.rapidapi.com/football-players-search?search=m`,
+    $(matchSelector).each((i, el) => {
+      const home = $(el).find(homeSelector).text().trim();
+      const away = $(el).find(awaySelector).text().trim();
+      const time = $(el).find(timeSelector).text().trim();
 
-    headers: {
-      "x-rapidapi-key": process.env.RAPIDAPI_KEY,
-      "x-rapidapi-host": "api-football-v1.p.rapidapi.com",
-      "User-Agent": "LotoPredict/1.0 (contact: support@lotopredict.app)",
-    },
-    parse: (json) => json?.response || [],
-  },
-  {
-    name: "api-football-direct",
-    url: (date) =>
-      `https://v3.football.api-sports.io/fixtures?date=${date}`,
-    headers: {
-      "x-apisports-key": process.env.API_FOOTBALL_KEY,
-      "User-Agent": "LotoPredict/1.0 (contact: support@lotopredict.app)",
-    },
-    parse: (json) => json?.response || [],
-  },
-];
+      if (home && away) matches.push({ home, away, time });
+    });
 
-/* ===============================
-   FETCH AVEC FALLBACK + CACHE
-================================ */
-
-async function getMatchesWithFallback(date) {
-  // 🧠 Cache journalier
-  if (dailyCache.date === date && dailyCache.matches) {
-    console.log("📦 Données servies depuis le cache");
-    return {
-      source: "cache",
-      matches: dailyCache.matches,
-    };
+    return matches;
+  } catch (err) {
+    console.error(`❌ Erreur scraping ${url}:`, err.message);
+    return [];
   }
+}
 
-  for (const api of FOOTBALL_APIS) {
-    try {
-      console.log(`🔄 Tentative API : ${api.name}`);
+async function getMatchesToday() {
+  const sites = [
+    {
+      name: "SofaScore",
+      url: "https://www.sofascore.com/today",
+      matchSelector: ".event-row",
+      homeSelector: ".home .team-name",
+      awaySelector: ".away .team-name",
+      timeSelector: ".event-time",
+    },
+    {
+      name: "Flashscore",
+      url: "https://www.flashscore.com/football/",
+      matchSelector: ".event__match",
+      homeSelector: ".event__participant--home",
+      awaySelector: ".event__participant--away",
+      timeSelector: ".event__time",
+    },
+    {
+      name: "BeSoccer",
+      url: "https://www.besoccer.com/matchday",
+      matchSelector: ".match-item",
+      homeSelector: ".home-name",
+      awaySelector: ".away-name",
+      timeSelector: ".match-time",
+    },
+  ];
 
-      const res = await fetch(api.url(date), {
-        headers: api.headers,
-        timeout: 8000,
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-
-      const json = await res.json();
-      const matches = api.parse(json);
-
-      if (matches.length > 0) {
-        console.log(`✅ Succès via ${api.name}`);
-
-        // 🧠 Sauvegarde cache
-        dailyCache = {
-          date,
-          matches,
-          source: api.name,
-        };
-
-        return {
-          source: api.name,
-          matches,
-        };
-      }
-    } catch (err) {
-      console.warn(`❌ ${api.name} indisponible → ${err.message}`);
+  let allMatches = [];
+  for (const site of sites) {
+    console.log(`🔄 Tentative scraping : ${site.name}`);
+    const matches = await scrapeSite(site);
+    if (matches.length) {
+      console.log(`✅ ${matches.length} matchs récupérés depuis ${site.name}`);
+      allMatches = allMatches.concat(matches);
+      break; // Premier site avec résultats → on stop
+    } else {
+      console.warn(`⚠️ ${site.name} indisponible ou aucun match`);
     }
   }
 
-  throw new Error("Aucune API football disponible");
+  if (!allMatches.length) {
+    console.warn("⚠️ Aucun site n'a retourné de matchs, fallback avec JSON vide");
+  }
+
+  return allMatches;
 }
 
-/* ===============================
-   ROUTE : MATCHS DU JOUR
-================================ */
+// --------------------------
+// 🔹 Stockage local
+// --------------------------
+function saveMatchesToFile(matches) {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const filePath = `./matches-${today}.json`;
+  fs.writeFileSync(filePath, JSON.stringify(matches, null, 2));
+  console.log(`💾 Matchs sauvegardés dans ${filePath}`);
+}
 
+// --------------------------
+// 🔹 Routes
+// --------------------------
 app.get("/api/football/matches/today", async (req, res) => {
-  const today = new Date().toISOString().split("T")[0];
-  console.log("📅 Date demandée :", today);
-
   try {
-    const data = await getMatchesWithFallback(today);
-    console.log("📊 Nombre de matchs :", data.matches.length);
-    res.json(data);
+    const matches = await getMatchesToday();
+    saveMatchesToFile(matches);
+    res.json({ source: "scraping", matches });
   } catch (err) {
-    console.error("🔥 ERREUR FOOTBALL :", err.message);
-    res.status(503).json({
-      error: err.message,
-    });
+    console.error("❌ Erreur /matches/today:", err);
+    res.status(500).json({ error: "Impossible de récupérer les matchs" });
   }
 });
 
-
-/* ===============================
-   ROUTE TEST
-================================ */
-
-app.get("/", (req, res) => {
-  res.send("✅ FootballPredict backend actif");
-});
-
-/* ===============================
-   LANCEMENT SERVEUR
-================================ */
-
-const PORT = process.env.PORT || 10000;
+// --------------------------
+// 🔹 Lancer le serveur
+// --------------------------
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Serveur FootballPredict lancé sur le port ${PORT}`);
+  console.log(`🚀 FootballPredict server en ligne sur port ${PORT}`);
 });
