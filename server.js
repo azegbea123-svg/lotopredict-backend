@@ -22,8 +22,9 @@ let dailyCache = {
 const FOOTBALL_APIS = [
   {
     name: "rapidapi-football",
-    url: (date) =>
-      `https://api-football-v1.p.rapidapi.com/v3/fixtures?date=${date}`,
+   url: () =>
+  `https://api-football-v1.p.rapidapi.com/v3/fixtures?live=all`,
+
     headers: {
       "x-rapidapi-key": process.env.RAPIDAPI_KEY,
       "x-rapidapi-host": "api-football-v1.p.rapidapi.com",
@@ -102,16 +103,20 @@ async function getMatchesWithFallback(date) {
 
 app.get("/api/football/matches/today", async (req, res) => {
   const today = new Date().toISOString().split("T")[0];
+  console.log("📅 Date demandée :", today);
 
   try {
     const data = await getMatchesWithFallback(today);
+    console.log("📊 Nombre de matchs :", data.matches.length);
     res.json(data);
   } catch (err) {
+    console.error("🔥 ERREUR FOOTBALL :", err.message);
     res.status(503).json({
-      error: "Services football temporairement indisponibles",
+      error: err.message,
     });
   }
 });
+
 
 /* ===============================
    ROUTE TEST
