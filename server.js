@@ -60,7 +60,7 @@ async function getMatchesToday() {
     },
     {
       name: "BeSoccer",
-      url: "https://www.besoccer.com/matchday",
+      url: "https://www.besoccer.com/",
       matchSelector: ".match-item",
       homeSelector: ".home-name",
       awaySelector: ".away-name",
