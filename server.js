@@ -64,7 +64,7 @@ async function fetchMatchesToday() {
         "X-Auth-Token": API_TOKEN,
         "User-Agent": "LotoPredict/1.0"
       },
-      timeout: 10000
+      timeout: 30000
     }
   );
 
