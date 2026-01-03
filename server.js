@@ -3,6 +3,7 @@ import express from "express";
 import axios from "axios";
 import cors from "cors";
 import fs from "fs";
+import path from "path";
 
 const app = express();
 app.use(cors({ origin: "*" }));
@@ -10,7 +11,13 @@ app.use(express.json());
 
 const API_KEY = process.env.FOOTBALL_DATA_API_KEY;
 const PORT = process.env.PORT || 10000;
-const CACHE_FILE = "./cache-matches-today.json";
+
+// ✅ Dossier cache
+const CACHE_DIR = "D:\\lotopredict-backend\\cache";
+if (!fs.existsSync(CACHE_DIR)) {
+  fs.mkdirSync(CACHE_DIR, { recursive: true });
+}
+const CACHE_FILE = path.join(CACHE_DIR, "matches-today.json");
 
 // 🔹 Helper : lecture du cache
 function readCache() {
@@ -28,7 +35,7 @@ function readCache() {
 // 🔹 Helper : écriture du cache
 function writeCache(matches) {
   fs.writeFileSync(CACHE_FILE, JSON.stringify(matches, null, 2));
-  console.log("💾 Cache journalier mis à jour");
+  console.log("💾 Cache journalier mis à jour :", CACHE_FILE);
 }
 
 // -------------------------
