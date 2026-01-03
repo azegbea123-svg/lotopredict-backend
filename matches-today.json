@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "fixture": { "date": "2026-01-03T15:00:00Z", "status": { "long": "Not Started" } },
+    "league": { "name": "Premier League" },
+    "teams": { "home": { "name": "Arsenal" }, "away": { "name": "Chelsea" } },
+    "prediction": { "result": "1", "confidence": 72 }
+  },
+  {
+    "id": 2,
+    "fixture": { "date": "2026-01-03T17:00:00Z", "status": { "long": "Not Started" } },
+    "league": { "name": "La Liga" },
+    "teams": { "home": { "name": "Real Madrid" }, "away": { "name": "Barcelona" } },
+    "prediction": { "result": "2", "confidence": 65 }
+  }
+]

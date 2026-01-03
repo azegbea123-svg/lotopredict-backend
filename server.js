@@ -9,7 +9,7 @@ const app = express();
 app.use(cors({ origin: "*" }));
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 const API_TOKEN = process.env.FOOTBALL_DATA_TOKEN;
 const CACHE_DIR = "./cache";
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -64,7 +64,7 @@ async function fetchMatchesToday() {
         "X-Auth-Token": API_TOKEN,
         "User-Agent": "LotoPredict/1.0"
       },
-      timeout: 30000
+      timeout: 10000
     }
   );
 
