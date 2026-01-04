@@ -7,23 +7,29 @@ import cors from "cors";
 import admin from "firebase-admin";
 
 // ===============================
-// 🔐 Firebase Admin (UNE SEULE FOIS)
+// 🔐 Firebase Admin (OPTIONNEL)
 // ===============================
-let serviceAccount = null;
+let db = null;
 
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+    }
+
+    db = admin.firestore();
+    console.log("🔥 Firebase Admin activé");
+
+  } catch (e) {
+    console.error("❌ Erreur Firebase config:", e.message);
+  }
 } else {
-  console.warn("⚠️ FIREBASE_SERVICE_ACCOUNT non défini – Firebase désactivé");
+  console.warn("⚠️ Firebase désactivé (pas de FIREBASE_SERVICE_ACCOUNT)");
 }
-
-if (serviceAccount && !admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
-}
-
-const db = admin.firestore();
 
 // ===============================
 // 🚀 App Express
@@ -42,25 +48,28 @@ const FOOTBALL_API_URL = "https://api.football-data.org/v4/matches";
 // 📅 Utilitaire date du jour
 // ===============================
 function todayKey() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  return new Date().toISOString().slice(0, 10);
 }
 
 // ===============================
-// ⚽ MATCHS DU JOUR (CACHE FIRESTORE)
+// ⚽ MATCHS DU JOUR
 // ===============================
 app.get("/api/football/matches/today", async (req, res) => {
   const cacheId = todayKey();
-  const cacheRef = db.collection("football_cache").doc(cacheId);
 
   try {
-    // 🔹 1️⃣ Vérifier le cache Firestore
-    const cached = await cacheRef.get();
-    if (cached.exists) {
-      console.log("📦 Matchs chargés depuis Firestore");
-      return res.json({
-        source: "firestore-cache",
-        matches: cached.data().matches,
-      });
+    // 🔹 1️⃣ Cache Firestore (si dispo)
+    if (db) {
+      const cacheRef = db.collection("football_cache").doc(cacheId);
+      const cached = await cacheRef.get();
+
+      if (cached.exists) {
+        console.log("📦 Matchs chargés depuis Firestore");
+        return res.json({
+          source: "firestore-cache",
+          matches: cached.data().matches,
+        });
+      }
     }
 
     // 🔹 2️⃣ Appel API football-data.org
@@ -86,13 +95,15 @@ app.get("/api/football/matches/today", async (req, res) => {
       },
     }));
 
-    // 🔹 3️⃣ Sauvegarde Firestore
-    await cacheRef.set({
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      matches,
-    });
+    // 🔹 3️⃣ Sauvegarde Firestore (si dispo)
+    if (db) {
+      await db.collection("football_cache").doc(cacheId).set({
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        matches,
+      });
 
-    console.log("💾 Matchs sauvegardés dans Firestore");
+      console.log("💾 Matchs sauvegardés dans Firestore");
+    }
 
     res.json({
       source: "football-data.org",
