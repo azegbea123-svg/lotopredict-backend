@@ -9,11 +9,17 @@ import admin from "firebase-admin";
 // ===============================
 // 🔐 Firebase Admin (UNE SEULE FOIS)
 // ===============================
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+let serviceAccount = null;
 
-if (!admin.apps.length) {
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else {
+  console.warn("⚠️ FIREBASE_SERVICE_ACCOUNT non défini – Firebase désactivé");
+}
+
+if (serviceAccount && !admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+    credential: admin.credential.cert(serviceAccount)
   });
 }
 
