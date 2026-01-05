@@ -8,29 +8,30 @@ import { db } from "../firebase.js";
 export async function fetchTodaysMatchesFromAPI(dateStr) {
   try {
     const response = await fetch(
-      `https://api.football-data.com/matches?date=${dateStr}`,
-      {
-        headers: {
-          "X-Auth-Token": process.env.FOOTBALL_DATA_API_KEY
-        }
-      }
-    );
+  `https://api.football-data.org/v4/matches?dateFrom=${dateStr}&dateTo=${dateStr}`,
+  {
+    headers: {
+      "X-Auth-Token": process.env.FOOTBALL_DATA_API_KEY
+    }
+  }
+);
 
     if (!response.ok) {
       throw new Error(`API Football Data error: ${response.status}`);
     }
 
-    const data = await response.json();
+   const data = await response.json();
 
-    // Adapter la structure pour Firestore
-    const matches = data.matches.map(match => ({
-      matchId: match.id.toString(),
-      league: match.competition.name,
-      homeTeam: match.homeTeam.name,
-      awayTeam: match.awayTeam.name,
-      kickoff: match.utcDate, // format ISO
-      prediction: null // plus tard, on appliquera ton algo
-    }));
+const matches = data.matches.map(match => ({
+  matchId: match.id.toString(),
+  competition: match.competition.name,
+  competitionCode: match.competition.code,
+  homeTeam: match.homeTeam.name,
+  awayTeam: match.awayTeam.name,
+  kickoff: match.utcDate,
+  status: match.status,
+  prediction: null
+}));
 
     return matches;
   } catch (error) {
