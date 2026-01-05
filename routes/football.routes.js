@@ -1,17 +1,18 @@
 import express from "express";
-import admin from "firebase-admin";
 import { generateFootballPredictions } from "../services/football.service.js";
 import { footballDoc } from "../models/football.model.js";
+import { getDb } from "../firebase.js";
 
 const router = express.Router();
-const db = admin.firestore();
 
 /* =====================================
-   Générer + stocker prédictions
+   ⚽ Générer + stocker prédictions
 ===================================== */
 router.get("/predict", async (req, res) => {
   try {
+    const db = getDb(); // 🔐 Firebase garanti initialisé
     const predictions = generateFootballPredictions();
+
     const batch = db.batch();
 
     predictions.forEach(match => {
@@ -26,9 +27,9 @@ router.get("/predict", async (req, res) => {
       stored: predictions.length,
       predictions,
     });
-  } catch (err) {
-    console.error("❌ Football store error:", err);
-    res.status(500).json({ error: "Impossible de générer les prédictions" });
+  } catch (error) {
+    console.error("❌ Football error:", error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 

@@ -1,38 +1,30 @@
 import express from "express";
 import cors from "cors";
-import admin from "firebase-admin";
 import footballRoutes from "./routes/football.routes.js";
+import { initFirebase } from "./firebase.js";
 
-// 🔐 Firebase Admin (une seule fois)
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-}
-
-const db = admin.firestore();
 const app = express();
 
-// ✅ Middlewares
+// Middlewares
 app.use(express.json());
 app.use(cors({ origin: "*" }));
 
-/* =====================================
-   🎰 LOTOPREDICT (tes routes loto ici)
-===================================== */
-// Exemple placeholder
+// 🔐 Initialiser Firebase AVANT les routes
+initFirebase();
+
+/* ===============================
+   🎰 LOTOPREDICT
+================================ */
 app.get("/api/loto/predict", (req, res) => {
   res.json({ message: "LotoPredict OK" });
 });
 
-/* =====================================
-   ⚽ FOOTBALL (MODULE INTERNE)
-===================================== */
+/* ===============================
+   ⚽ FOOTBALL
+================================ */
 app.use("/api/football", footballRoutes);
 
-// 🚀 Lancer serveur
+// Lancer serveur
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🚀 LotoPredict backend actif sur port ${PORT}`);
