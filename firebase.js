@@ -1,27 +1,19 @@
 import admin from "firebase-admin";
 
-let db = null;
-
-export function initFirebase() {
-  if (process.env.FIREBASE_SERVICE_ACCOUNT && !admin.apps.length) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-
-    db = admin.firestore();
-    console.log("✅ Firebase initialisé");
-  } else {
-    console.warn("⚠️ Firebase non initialisé (variable absente ou déjà actif)");
+// Sécurité : ne jamais initialiser deux fois
+if (!admin.apps.length) {
+  if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+    throw new Error("FIREBASE_SERVICE_ACCOUNT manquant dans les variables d'environnement");
   }
 
-  return db;
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+
+  console.log("🔥 Firebase Admin initialisé");
 }
 
-export function getDb() {
-  if (!db) {
-    throw new Error("Firebase non initialisé. Appelle initFirebase() d'abord.");
-  }
-  return db;
-}
+export const db = admin.firestore();
+export default admin;

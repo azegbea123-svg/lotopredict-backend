@@ -1,7 +1,5 @@
-import admin from "firebase-admin";
 import fetch from "node-fetch"; // si Node 22+, tu peux utiliser fetch global
-
-const db = admin.firestore();
+import { db } from "../config/firebase.js";
 
 /**
  * Appelle l'API Football Data pour récupérer les matchs du jour
