@@ -1,5 +1,5 @@
 import fetch from "node-fetch"; // si Node 22+, tu peux utiliser fetch global
-import { admin, db, initFirebase } from "../firebase.js";
+import { admin, initFirebase } from "../firebase.js";
 
 initFirebase();
 
