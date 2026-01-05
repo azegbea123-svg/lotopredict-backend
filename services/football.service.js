@@ -5,67 +5,41 @@ initFirebase();
 
 const db = admin.firestore();
 
-export async function fetchAndStoreTodaysMatches() {
-  const today = new Date().toISOString().slice(0, 10);
-
-  const response = await fetch("https://api.football-data.org/v4/matches", {
-    headers: {
-      "X-Auth-Token": process.env.FOOTBALL_DATA_API_KEY,
-    },
-  });
-
-    if (!response.ok) {
-      throw new Error(`API Football Data error: ${response.status}`);
-    }
-
-  const data = await response.json();
-  const matches = data.matches || [];
-
-  for (const match of matches) {
-    await db
-      .collection("football_matches")
-      .doc(String(match.id))
-      .set(
-        {
-          ...match,
-          fetchedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-  }
-
-  return {
-    success: true,
-    date: today,
-    matches,
-  };
-}
-
 /**
- * Enregistre les matchs dans Firestore par date
- */
-export async function saveFootballMatchesByDate(date, matches) {
-  const ref = db.collection("football_matches").doc(date);
-
-  await ref.set(
-    {
-      date,
-      matches,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    },
-    { merge: true }
-  );
-}
-
-/**
- * Génère + stocke automatiquement les matchs du jour depuis Football Data
+ * Récupère les matchs du jour depuis l'API Football Data
+ * et les stocke dans Firestore sous football_matches/{date}
  */
 export async function fetchAndStoreTodaysMatches() {
   const today = new Date();
   const dateStr = today.toISOString().slice(0, 10); // "YYYY-MM-DD"
 
-  const matches = await fetchTodaysMatchesFromAPI(dateStr);
-  await saveFootballMatchesByDate(dateStr, matches);
+  // Appel API Football Data
+  const response = await fetch(
+    `https://api.football-data.org/v4/matches?dateFrom=${dateStr}&dateTo=${dateStr}`,
+    {
+      headers: {
+        "X-Auth-Token": process.env.FOOTBALL_DATA_API_KEY,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Football API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const matches = data.matches || [];
+
+  // Stockage Firestore par date
+  const ref = db.collection("football_matches").doc(dateStr);
+  await ref.set(
+    {
+      date: dateStr,
+      matches,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
 
   return { date: dateStr, matches };
 }
