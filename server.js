@@ -1,16 +1,20 @@
 import express from "express";
 import cors from "cors";
+
+// 🔥 Initialise Firebase UNE FOIS
+import "./firebase.js";
+
 import footballRoutes from "./routes/football.routes.js";
-import { initFirebase } from "./firebase.js";
 
 const app = express();
 
-// Middlewares
+app.use(cors());
 app.use(express.json());
-app.use(cors({ origin: "*" }));
 
-// 🔐 Initialiser Firebase AVANT les routes
-initFirebase();
+/* ===============================
+   ⚽ FOOTBALL (dépendant de LotoPredict)
+================================ */
+app.use("/api/football", footballRoutes);
 
 /* ===============================
    🎰 LOTOPREDICT
@@ -19,13 +23,7 @@ app.get("/api/loto/predict", (req, res) => {
   res.json({ message: "LotoPredict OK" });
 });
 
-/* ===============================
-   ⚽ FOOTBALL
-================================ */
-app.use("/api/football", footballRoutes);
-
-// Lancer serveur
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`🚀 LotoPredict backend actif sur port ${PORT}`);
+  console.log(`🚀 Serveur en ligne sur le port ${PORT}`);
 });
