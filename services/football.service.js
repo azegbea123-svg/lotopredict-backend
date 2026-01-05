@@ -1,5 +1,5 @@
 import fetch from "node-fetch"; // si Node 22+, tu peux utiliser fetch global
-import { db } from "../config/firebase.js";
+import { db } from "../firebase.js";
 
 /**
  * Appelle l'API Football Data pour récupérer les matchs du jour
