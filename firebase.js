@@ -4,14 +4,21 @@ let firebaseApp;
 
 export function initFirebase() {
   if (!firebaseApp) {
+    if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+      throw new Error("❌ FIREBASE_SERVICE_ACCOUNT non défini !");
+    }
+
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+
     admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
+      credential: admin.credential.cert(serviceAccount),
+      // projectId sera automatiquement détecté depuis serviceAccount
     });
+
     firebaseApp = admin;
     console.log("🔥 Firebase initialisé");
   }
   return firebaseApp;
 }
 
-// ✅ Export de l'instance admin pour l'utiliser ailleurs
 export { admin };
