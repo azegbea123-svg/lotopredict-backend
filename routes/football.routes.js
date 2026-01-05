@@ -1,35 +1,59 @@
 import express from "express";
-import { generateFootballPredictions } from "../services/football.service.js";
-import { footballDoc } from "../models/football.model.js";
-import { getDb } from "../firebase.js";
+import {
+  saveFootballMatchesByDate,
+  getFootballMatchesByDate
+} from "../services/football.service.js";
 
 const router = express.Router();
 
-/* =====================================
-   ⚽ Générer + stocker prédictions
-===================================== */
-router.get("/predict", async (req, res) => {
+/**
+ * Enregistrer les matchs d’une date
+ */
+router.post("/store", async (req, res) => {
   try {
-    const db = getDb(); // 🔐 Firebase garanti initialisé
-    const predictions = generateFootballPredictions();
+    const { date, matches } = req.body;
 
-    const batch = db.batch();
+    if (!date || !matches || !Array.isArray(matches)) {
+      return res.status(400).json({
+        success: false,
+        message: "date et matches sont requis"
+      });
+    }
 
-    predictions.forEach(match => {
-      const ref = db.collection("football_matches").doc(match.matchId);
-      batch.set(ref, footballDoc(match), { merge: true });
-    });
-
-    await batch.commit();
+    await saveFootballMatchesByDate(date, matches);
 
     res.json({
-      module: "football",
-      stored: predictions.length,
-      predictions,
+      success: true,
+      message: "Matchs enregistrés avec succès"
     });
   } catch (error) {
-    console.error("❌ Football error:", error.message);
-    res.status(500).json({ error: error.message });
+    console.error("Football store error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erreur serveur football"
+    });
+  }
+});
+
+/**
+ * Lire les matchs d’une date
+ */
+router.get("/:date", async (req, res) => {
+  try {
+    const { date } = req.params;
+
+    const data = await getFootballMatchesByDate(date);
+
+    res.json({
+      success: true,
+      ...data
+    });
+  } catch (error) {
+    console.error("Football read error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erreur serveur football"
+    });
   }
 });
 

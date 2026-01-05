@@ -1,26 +1,33 @@
-export function generateFootballPredictions() {
-  const now = new Date();
+import admin from "firebase-admin";
 
-  return [
+const db = admin.firestore();
+
+/**
+ * Enregistre les matchs par date dans Firestore
+ */
+export async function saveFootballMatchesByDate(date, matches) {
+  const ref = db.collection("football_matches").doc(date);
+
+  await ref.set(
     {
-      matchId: "RM-BAR-2026-01-04",
-      competition: "Liga",
-      homeTeam: "Real Madrid",
-      awayTeam: "FC Barcelona",
-      prediction: "1X",
-      odds: 1.65,
-      confidence: 78,
-      kickoffAt: new Date(now.getTime() + 3 * 60 * 60 * 1000),
+      date,
+      matches,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
     },
-    {
-      matchId: "PSG-OM-2026-01-04",
-      competition: "Ligue 1",
-      homeTeam: "PSG",
-      awayTeam: "Marseille",
-      prediction: "1",
-      odds: 1.48,
-      confidence: 82,
-      kickoffAt: new Date(now.getTime() + 5 * 60 * 60 * 1000),
-    },
-  ];
+    { merge: true }
+  );
+}
+
+/**
+ * Récupère les matchs d'une date précise
+ */
+export async function getFootballMatchesByDate(date) {
+  const ref = db.collection("football_matches").doc(date);
+  const snap = await ref.get();
+
+  if (!snap.exists) {
+    return { date, matches: [] };
+  }
+
+  return snap.data();
 }
