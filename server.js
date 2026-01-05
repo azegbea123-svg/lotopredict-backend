@@ -4,6 +4,7 @@ import cors from "cors";
 // 🔥 Initialise Firebase UNE FOIS
 import "./firebase.js";
 
+import { runDailyFootballPipeline } from "./jobs/football.job.js";
 import footballRoutes from "./routes/football.routes.js";
 
 const app = express();
@@ -15,6 +16,10 @@ app.use(express.json());
    ⚽ FOOTBALL (dépendant de LotoPredict)
 ================================ */
 app.use("/api/football", footballRoutes);
+
+
+// 🔥 AUTO : récupération + stockage des matchs
+runDailyFootballPipeline();
 
 /* ===============================
    🎰 LOTOPREDICT
