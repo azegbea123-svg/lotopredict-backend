@@ -15,7 +15,7 @@ export async function fetchAndStoreTodaysMatches() {
 
   // Appel API Football Data
   const response = await fetch(
-    `https://api.football-data.org/v4/matches?dateFrom=${dateStr}&dateTo=${dateStr}`,
+    `https://api.football-data.org/v4/matches`,
     {
       headers: {
         "X-Auth-Token": process.env.FOOTBALL_DATA_API_KEY,
