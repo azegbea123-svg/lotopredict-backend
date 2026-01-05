@@ -1,36 +1,28 @@
 import express from "express";
 import {
-  saveFootballMatchesByDate,
+  fetchAndStoreTodaysMatches,
   getFootballMatchesByDate
 } from "../services/football.service.js";
 
 const router = express.Router();
 
 /**
- * Enregistrer les matchs d’une date
+ * Récupérer les matchs du jour depuis Football Data et stocker
  */
-router.post("/store", async (req, res) => {
+router.post("/fetch-today", async (req, res) => {
   try {
-    const { date, matches } = req.body;
-
-    if (!date || !matches || !Array.isArray(matches)) {
-      return res.status(400).json({
-        success: false,
-        message: "date et matches sont requis"
-      });
-    }
-
-    await saveFootballMatchesByDate(date, matches);
+    const data = await fetchAndStoreTodaysMatches();
 
     res.json({
       success: true,
-      message: "Matchs enregistrés avec succès"
+      message: "Matchs du jour récupérés et stockés depuis Football Data",
+      ...data
     });
   } catch (error) {
-    console.error("Football store error:", error);
+    console.error("Football fetch error:", error);
     res.status(500).json({
       success: false,
-      message: "Erreur serveur football"
+      message: "Impossible de récupérer les matchs du jour"
     });
   }
 });
@@ -41,7 +33,6 @@ router.post("/store", async (req, res) => {
 router.get("/:date", async (req, res) => {
   try {
     const { date } = req.params;
-
     const data = await getFootballMatchesByDate(date);
 
     res.json({
