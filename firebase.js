@@ -1,18 +1,17 @@
 import admin from "firebase-admin";
 
-if (!admin.apps.length) {
-  if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT manquant");
+let firebaseApp;
+
+export function initFirebase() {
+  if (!firebaseApp) {
+    admin.initializeApp({
+      credential: admin.credential.applicationDefault(),
+    });
+    firebaseApp = admin;
+    console.log("🔥 Firebase initialisé");
   }
-
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-
-  console.log("🔥 Firebase Admin initialisé");
+  return firebaseApp;
 }
 
-export const db = admin.firestore();
-export default admin;
+// ✅ Export de l'instance admin pour l'utiliser ailleurs
+export { admin };
