@@ -1,4 +1,9 @@
 import { fetchAndStoreTodaysMatches } from "../services/football.service.js";
+import express from "express";
+import axios from "axios";   // 👈 OBLIGATOIRE
+import cors from "cors";
+import fs from "fs";
+import path from "path";
 
 export async function runDailyFootballPipeline() {
   try {
