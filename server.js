@@ -18,7 +18,7 @@ app.get("/api/football/matches/today", async (req, res) => {
       "https://api.football-data.org/v4/matches",
       {
         headers: {
-          "X-Auth-Token": process.env.FOOTBALL_DATA_API_KEY,
+          "X-Auth-Token": API_KEY,
           "User-Agent": "LotoPredict-Football",
         },
         timeout: 10000,
