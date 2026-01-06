@@ -14,16 +14,27 @@ const API_KEY = process.env.FOOTBALL_DATA_API_KEY;
 // -------------------------
 app.get("/api/football/matches/today", async (req, res) => {
   try {
+    const today = new Date().toISOString().split("T")[0];
+
     const response = await axios.get(
-      "https://api.football-data.org/v4/matches",
-      {
-        headers: {
-          "X-Auth-Token": API_KEY,
-          "User-Agent": "LotoPredict-Football",
-        },
-        timeout: 10000,
-      }
-    );
+      "https://api.football-data.org/v4/matches?dateFrom=" + TODAY + "&dateTo=" + TODAY,
+    {
+      headers: {
+        "X-Auth-Token": API_KEY,
+        "User-Agent": "LotoPredict/1.0"
+      },
+      timeout: 10000
+    }
+  );
+
+  return response.data.matches || [];
+}
+
+    res.json({
+      date: today,
+      count: response.data.response.length,
+      matches: response.data.response
+    });
 
     const matches = response.data.matches.map(m => ({
       id: m.id,
