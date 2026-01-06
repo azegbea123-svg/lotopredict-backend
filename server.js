@@ -1,12 +1,12 @@
 import express from "express";
 import axios from "axios";
 import cors from "cors";
+import footballRoutes from "./routes/football.js";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-
-const API_KEY = process.env.FOOTBALL_DATA_API_KEY;
+app.use("/api/football", footballRoutes);
 
 // -------------------------
 // ⚽ MATCHS FOOT (AUJOURD’HUI + DEMAIN)
