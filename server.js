@@ -10,31 +10,22 @@ app.use(express.json());
 const API_KEY = process.env.FOOTBALL_DATA_API_KEY;
 
 // -------------------------
-// ⚽ MATCHS DU JOUR – DIRECT
+// ⚽ MATCHS DU JOUR – FOOTBALL-DATA
 // -------------------------
 app.get("/api/football/matches/today", async (req, res) => {
   try {
     const today = new Date().toISOString().split("T")[0];
 
     const response = await axios.get(
-      "https://api.football-data.org/v4/matches?dateFrom=" + TODAY + "&dateTo=" + TODAY,
-    {
-      headers: {
-        "X-Auth-Token": API_KEY,
-        "User-Agent": "LotoPredict/1.0"
-      },
-      timeout: 10000
-    }
-  );
-
-  return response.data.matches || [];
-}
-
-    res.json({
-      date: today,
-      count: response.data.response.length,
-      matches: response.data.response
-    });
+      `https://api.football-data.org/v4/matches?dateFrom=${today}&dateTo=${today}`,
+      {
+        headers: {
+          "X-Auth-Token": API_KEY,
+          "User-Agent": "LotoPredict/1.0",
+        },
+        timeout: 10000,
+      }
+    );
 
     const matches = response.data.matches.map(m => ({
       id: m.id,
@@ -49,16 +40,21 @@ app.get("/api/football/matches/today", async (req, res) => {
       },
     }));
 
-    res.json({
+    return res.json({
       source: "football-data.org",
+      date: today,
       total: matches.length,
       matches,
     });
 
   } catch (error) {
-    console.error("❌ Football API error:", error.response?.status);
+    console.error(
+      "❌ Football API error:",
+      error.response?.status,
+      error.response?.data || error.message
+    );
 
-    res.status(500).json({
+    return res.status(500).json({
       error: "Impossible de récupérer les matchs",
     });
   }
