@@ -14,14 +14,13 @@ export async function fetchAndStoreTodaysMatches() {
   const dateStr = today.toISOString().slice(0, 10); // "YYYY-MM-DD"
 
   // Appel API Football Data
-  const response = await fetch(
-    `https://api.football-data.org/v4/matches`,
-    {
+  const response = await axios.get("https://api.football-data.org/v4/matches", {
       headers: {
         "X-Auth-Token": process.env.FOOTBALL_DATA_API_KEY,
+        "User-Agent": "LotoPredict-FootballPredict",
       },
-    }
-  );
+      timeout: 10000,
+    });
 
   if (!response.ok) {
     throw new Error(`Football API error: ${response.status}`);
