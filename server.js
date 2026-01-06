@@ -1,5 +1,8 @@
 import express from "express";
+import axios from "axios";   // 👈 OBLIGATOIRE
 import cors from "cors";
+import fs from "fs";
+import path from "path";
 
 // 🔥 Initialise Firebase UNE FOIS
 import "./firebase.js";
