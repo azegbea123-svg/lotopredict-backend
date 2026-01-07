@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
 
 let firebaseApp;
+let db;
 
 export function initFirebase() {
   if (!firebaseApp) {
@@ -12,14 +13,21 @@ export function initFirebase() {
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      // projectId sera automatiquement détecté depuis serviceAccount
     });
 
-    
+    db = admin.firestore();
     firebaseApp = admin;
+
     console.log("🔥 Firebase initialisé");
   }
   return firebaseApp;
+}
+
+export function getDB() {
+  if (!db) {
+    throw new Error("❌ Firestore non initialisé. Appelle initFirebase() avant.");
+  }
+  return db;
 }
 
 export { admin };
