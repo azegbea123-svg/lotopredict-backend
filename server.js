@@ -3,8 +3,7 @@ import express from "express";
 import axios from "axios";
 import cors from "cors";
 import footballRoutes from "./routes/football.js";
-import admin from "firebase-admin";
-import { firebaseApp } from "firebase.js"; // ton fichier firebase.js fonctionnel
+import db from "./firebase.js"; // 🔹 Chemin correct selon ton projet
 
 // ===============================
 // 🔐 Firebase
