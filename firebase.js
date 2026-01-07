@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
 
 let firebaseApp;
+let db = null; // pas const ici, pour pouvoir initialiser conditionnellement
 
 export function initFirebase() {
   if (!firebaseApp) {
@@ -15,6 +16,7 @@ export function initFirebase() {
       // projectId sera automatiquement détecté depuis serviceAccount
     });
 
+    db = admin.firestore();
     firebaseApp = admin;
     console.log("🔥 Firebase initialisé");
   }

@@ -13,7 +13,6 @@ if (!admin.apps.length) {
     credential: admin.credential.cert(firebaseApp)
   });
 }
-const db = admin.firestore();
 
 // ===============================
 // 🚀 Express
