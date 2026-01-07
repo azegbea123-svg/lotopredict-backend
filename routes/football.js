@@ -1,5 +1,5 @@
 import express from "express";
-import { getDailyPrediction } from "./services/dailyPrediction.js";
+import { getDailyPrediction } from "../services/dailyPrediction.js";
 
 const router = express.Router();
 
