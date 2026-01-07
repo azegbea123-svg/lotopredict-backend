@@ -1,34 +1,60 @@
+// server.js
 import express from "express";
 import axios from "axios";
 import cors from "cors";
-import footballRoutes from "./routes/football.js";
+import fs from "fs";
+import path from "path";
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: "*" }));
 app.use(express.json());
-app.use("/api/football", footballRoutes);
 
-// -------------------------
-// ⚽ MATCHS FOOT (AUJOURD’HUI + DEMAIN)
-// -------------------------
+// ===============================
+// ⚽ CONFIG FOOTBALL-DATA
+// ===============================
+const API_KEY = process.env.FOOTBALL_DATA_API_KEY;
+const API_URL = "https://api.football-data.org/v4/matches";
+
+// ===============================
+// 📁 CACHE LOCAL
+// ===============================
+const CACHE_DIR = path.join(process.cwd(), "cache");
+if (!fs.existsSync(CACHE_DIR)) {
+  fs.mkdirSync(CACHE_DIR);
+}
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function cacheFilePath() {
+  return path.join(CACHE_DIR, `matches-${todayKey()}.json`);
+}
+
+// ===============================
+// ⚽ ROUTE MATCHS DU JOUR
+// ===============================
 app.get("/api/football/matches", async (req, res) => {
+  const filePath = cacheFilePath();
+
+  // 1️⃣ Lire le cache si existant
+  if (fs.existsSync(filePath)) {
+    console.log("📦 Matchs chargés depuis le cache local");
+    const cached = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    return res.json({
+      source: "cache",
+      total: cached.length,
+      matches: cached
+    });
+  }
+
+  // 2️⃣ Sinon → appel API
   try {
-    const API_KEY = process.env.FOOTBALL_DATA_API_KEY;
+    console.log("🌍 Appel football-data.org");
 
-    if (!API_KEY) {
-      return res.status(500).json({ error: "Clé API football manquante" });
-    }
-
-    // Période : aujourd’hui → +1 jour (UTC-safe)
-    const from = new Date();
-    const to = new Date();
-    to.setDate(to.getDate() + 1);
-
-    const dateFrom = from.toISOString().split("T")[0];
-    const dateTo = to.toISOString().split("T")[0];
-
+    const today = todayKey();
     const response = await axios.get(
-      `https://api.football-data.org/v4/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`,
+      `${API_URL}?dateFrom=${today}&dateTo=${today}`,
       {
         headers: {
           "X-Auth-Token": API_KEY,
@@ -38,37 +64,40 @@ app.get("/api/football/matches", async (req, res) => {
       }
     );
 
-    const matches = (response.data.matches || []).map(m => ({
+    const matches = response.data.matches.map(m => ({
       id: m.id,
-      competition: m.competition?.name || "Inconnu",
+      competition: m.competition?.name,
       date: m.utcDate,
       status: m.status,
-      home: m.homeTeam?.name || "-",
-      away: m.awayTeam?.name || "-",
+      home: m.homeTeam?.name,
+      away: m.awayTeam?.name,
       score: {
         home: m.score?.fullTime?.home,
         away: m.score?.fullTime?.away
       }
     }));
 
+    // 3️⃣ Sauvegarde cache
+    fs.writeFileSync(filePath, JSON.stringify(matches, null, 2));
+    console.log("💾 Cache journalier créé");
+
     res.json({
       source: "football-data.org",
-      from: dateFrom,
-      to: dateTo,
       total: matches.length,
       matches
     });
 
-  } catch (error) {
-    console.error("❌ Football API error:", error.message);
-
+  } catch (err) {
+    console.error("❌ Erreur football-data:", err.message);
     res.status(500).json({
       error: "Impossible de récupérer les matchs"
     });
   }
 });
 
-
+// ===============================
+// 🚀 SERVER
+// ===============================
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🚀 LotoPredict Football API en ligne sur ${PORT}`);
