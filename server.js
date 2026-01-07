@@ -3,7 +3,7 @@ import express from "express";
 import axios from "axios";
 import cors from "cors";
 import footballRoutes from "./routes/football.js";
-import db from "./firebase.js"; // 🔹 Chemin correct selon ton projet
+import admin from "./firebase.js"; // 🔹 Chemin correct selon ton projet
 
 // ===============================
 // 🔐 Firebase
