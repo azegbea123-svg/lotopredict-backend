@@ -1,25 +1,65 @@
 import { getDB } from "../firebase.js";
 
 /**
- * Génère une clé unique par jour
- * ex: 2026-01-07
+ * Clé unique par jour (ex: 2026-01-07)
  */
 function getTodayKey() {
   return new Date().toISOString().split("T")[0];
 }
 
 /**
- * Algo simple (améliorable plus tard avec stats réelles)
+ * 1X2
+ */
+function predict1X2() {
+  const outcomes = ["1", "N", "2"];
+  return outcomes[Math.floor(Math.random() * outcomes.length)];
+}
+
+/**
+ * Over / Under
+ * (logique simple, améliorable plus tard)
+ */
+function predictOverUnder() {
+  const avgGoals = Math.random() * 4; // simulation
+  if (avgGoals >= 2.6) return "OVER 2.5";
+  if (avgGoals >= 1.6) return "OVER 1.5";
+  return "UNDER 2.5";
+}
+
+/**
+ * BTTS – Both Teams To Score
+ */
+function predictBTTS() {
+  return Math.random() > 0.45 ? "YES" : "NO";
+}
+
+/**
+ * Score probable
+ */
+function predictScore(result) {
+  if (result === "1") return "2-1";
+  if (result === "2") return "1-2";
+  return "1-1";
+}
+
+/**
+ * Prédiction complète d’un match
  */
 function predictMatch(match) {
-  const outcomes = ["1", "N", "2"];
-  const choice = outcomes[Math.floor(Math.random() * outcomes.length)];
+  const result = predict1X2();
 
   return {
     home: match.home,
     away: match.away,
-    prediction: choice,
-    confidence: Math.floor(60 + Math.random() * 30), // 60–90%
+
+    markets: {
+      result,                 // 1X2
+      overUnder: predictOverUnder(),
+      btts: predictBTTS(),
+      score: predictScore(result),
+    },
+
+    confidence: Math.floor(65 + Math.random() * 25), // 65–90%
   };
 }
 
