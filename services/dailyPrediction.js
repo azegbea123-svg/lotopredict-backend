@@ -7,135 +7,62 @@ function getTodayKey() {
   return new Date().toISOString().split("T")[0];
 }
 
-/* ================================
-   OUTILS
-================================ */
-function clamp(val, min, max) {
-  return Math.max(min, Math.min(max, val));
+/**
+ * 1X2
+ */
+function predict1X2() {
+  const outcomes = ["1", "N", "2"];
+  return outcomes[Math.floor(Math.random() * outcomes.length)];
 }
 
-/* ================================
-   1X2 LOGIQUE (plus stable)
-================================ */
-function predict1X2(match) {
-  const homePower =
-    match.homeGoalsAvg - match.homeConcedeAvg;
-  const awayPower =
-    match.awayGoalsAvg - match.awayConcedeAvg;
-
-  if (homePower > awayPower + 0.3) return "1";
-  if (awayPower > homePower + 0.3) return "2";
-  return "N";
+/**
+ * Over / Under
+ * (logique simple, améliorable plus tard)
+ */
+function predictOverUnder() {
+  const avgGoals = Math.random() * 4; // simulation
+  if (avgGoals >= 2.6) return "OVER 2.5";
+  if (avgGoals >= 1.6) return "OVER 1.5";
+  return "UNDER 2.5";
 }
 
-/* ================================
-   BTTS & OVER COHÉRENTS
-================================ */
-function predictMarkets(match) {
-  const totalAvg =
-    match.homeGoalsAvg + match.awayGoalsAvg;
-
-  const btts =
-    match.homeGoalsAvg >= 1 &&
-    match.awayGoalsAvg >= 1;
-
-  const over25 = totalAvg >= 2.6;
-  const over15 = totalAvg >= 1.6;
-
-  let overUnder = "UNDER 2.5";
-  if (over25) overUnder = "OVER 2.5";
-  else if (over15) overUnder = "OVER 1.5";
-
-  return { btts, overUnder, over25 };
+/**
+ * BTTS – Both Teams To Score
+ */
+function predictBTTS() {
+  return Math.random() > 0.45 ? "YES" : "NO";
 }
 
-/* ================================
-   SCORE EXACT COHÉRENT
-================================ */
-function predictScore(result, btts, over25) {
-  if (result === "1") {
-    if (!btts) return "2-0";
-    return over25 ? "3-1" : "2-1";
-  }
-
-  if (result === "2") {
-    if (!btts) return "0-2";
-    return over25 ? "1-3" : "1-2";
-  }
-
-  // Match nul
-  if (!btts) return "0-0";
-  return over25 ? "2-2" : "1-1";
+/**
+ * Score probable
+ */
+function predictScore(result) {
+  if (result === "1") return "2-1";
+  if (result === "2") return "1-2";
+  return "1-1";
 }
 
-/* ================================
-   VALIDATEUR FINAL
-================================ */
-function validatePrediction(markets) {
-  const [h, a] = markets.score.split("-").map(Number);
-  const total = h + a;
-
-  if (markets.btts && (h === 0 || a === 0)) return false;
-  if (!markets.btts && h > 0 && a > 0) return false;
-
-  if (markets.overUnder === "OVER 2.5" && total < 3) return false;
-  if (markets.overUnder === "UNDER 2.5" && total > 2) return false;
-
-  if (markets.result === "1" && h <= a) return false;
-  if (markets.result === "2" && a <= h) return false;
-  if (markets.result === "N" && h !== a) return false;
-
-  return true;
-}
-
-/* ================================
-   PRÉDICTION MATCH COMPLÈTE
-================================ */
+/**
+ * Prédiction complète d’un match
+ */
 function predictMatch(match) {
-  const result = predict1X2(match);
-  const marketsBase = predictMarkets(match);
-
-  let markets = {
-    result,
-    btts: marketsBase.btts ? "YES" : "NO",
-    overUnder: marketsBase.overUnder,
-    score: predictScore(
-      result,
-      marketsBase.btts,
-      marketsBase.over25
-    ),
-  };
-
-  // 🔒 Sécurité anti-incohérence
-  if (!validatePrediction(markets)) {
-    markets.score =
-      result === "N" ? "1-1" :
-      result === "1" ? "2-0" : "0-2";
-    markets.btts =
-      markets.score.includes("0") ? "NO" : "YES";
-  }
+  const result = predict1X2();
 
   return {
     home: match.home,
     away: match.away,
 
-    markets,
+    markets: {
+      result,                 // 1X2
+      overUnder: predictOverUnder(),
+      btts: predictBTTS(),
+      score: predictScore(result),
+    },
 
-    confidence: clamp(
-      60 +
-        Math.abs(
-          match.homeGoalsAvg -
-          match.awayGoalsAvg
-        ) * 20,
-      65,
-      90
-    ),
+    confidence: Math.floor(65 + Math.random() * 25), // 65–90%
   };
 }
 
-/* ================================
-   DAILY PREDICTION (CACHE)
-================================ */
 export async function getDailyPrediction(matches) {
   const db = getDB();
   const todayKey = getTodayKey();
