@@ -6,11 +6,10 @@ import axios from "axios";
 import cors from "cors";
 import fs from "fs";
 import path from "path";
-import footballRoutes from "./routes/football.js";
 import { admin, initFirebase } from "./firebase.js";
 
 // ===============================
-// 🔐 Initialisation Firebase
+// 🔐 Firebase
 // ===============================
 initFirebase();
 const db = admin.firestore();
@@ -21,10 +20,66 @@ const db = admin.firestore();
 const app = express();
 app.use(cors({ origin: "*" }));
 app.use(express.json());
-app.use("/api/football", footballRoutes);
 
 // ===============================
-// 📅 Utilitaires dates
+// 📁 CACHE LOCAL (PC)
+// ===============================
+const CACHE_DIR = "D:/lotopredict-backend/cache";
+const LOCAL_CACHE_FILE = path.join(CACHE_DIR, "football-matches.json");
+const CACHE_TTL = 1000 * 60 * 60 * 6; // 6 heures
+
+function ensureCacheDir() {
+  if (!fs.existsSync(CACHE_DIR)) {
+    fs.mkdirSync(CACHE_DIR, { recursive: true });
+  }
+}
+
+function readLocalCache(cacheId) {
+  try {
+    if (!fs.existsSync(LOCAL_CACHE_FILE)) return null;
+
+    const raw = fs.readFileSync(LOCAL_CACHE_FILE, "utf-8");
+    const data = JSON.parse(raw);
+
+    if (data.cacheId !== cacheId) return null;
+
+    const age = Date.now() - data.timestamp;
+    if (age > CACHE_TTL) {
+      console.log("🕒 Cache local expiré");
+      return null;
+    }
+
+    console.log("💾 Matchs chargés depuis le cache LOCAL (PC)");
+    return data.matches;
+  } catch (e) {
+    console.error("❌ Erreur lecture cache local :", e.message);
+    return null;
+  }
+}
+
+function writeLocalCache(cacheId, matches) {
+  try {
+    ensureCacheDir();
+    fs.writeFileSync(
+      LOCAL_CACHE_FILE,
+      JSON.stringify(
+        {
+          cacheId,
+          timestamp: Date.now(),
+          matches
+        },
+        null,
+        2
+      )
+    );
+    console.log("💽 Cache local sauvegardé sur le PC");
+  } catch (e) {
+    console.error("❌ Erreur écriture cache local :", e.message);
+  }
+}
+
+// ===============================
+// 📅 Dates
 // ===============================
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -37,42 +92,8 @@ function tomorrowKey() {
 }
 
 // ===============================
-// 💾 CACHE LOCAL (fichier)
-// ===============================
-const CACHE_DIR = path.resolve("cache");
-const LOCAL_CACHE_FILE = path.join(CACHE_DIR, "football_matches.json");
-
-function readLocalCache(cacheId) {
-  if (!fs.existsSync(LOCAL_CACHE_FILE)) return null;
-
-  const data = JSON.parse(fs.readFileSync(LOCAL_CACHE_FILE, "utf8"));
-  if (data.cacheId !== cacheId) return null;
-
-  return data.matches;
-}
-
-function writeLocalCache(cacheId, matches) {
-  if (!fs.existsSync(CACHE_DIR)) {
-    fs.mkdirSync(CACHE_DIR);
-  }
-
-  fs.writeFileSync(
-    LOCAL_CACHE_FILE,
-    JSON.stringify(
-      {
-        cacheId,
-        savedAt: new Date().toISOString(),
-        matches
-      },
-      null,
-      2
-    )
-  );
-}
-
-// ===============================
-// ⚽ MATCHS FOOT (AUJOURD’HUI + DEMAIN)
-// cache : LOCAL → FIRESTORE → API
+// ⚽ MATCHS FOOTBALL
+// LOCAL → FIRESTORE → API
 // ===============================
 app.get("/api/football/matches", async (req, res) => {
   const dateFrom = todayKey();
@@ -85,7 +106,6 @@ app.get("/api/football/matches", async (req, res) => {
     // ===============================
     const localMatches = readLocalCache(cacheId);
     if (localMatches) {
-      console.log("📦 Matchs depuis cache LOCAL");
       return res.json({
         source: "local-cache",
         from: dateFrom,
@@ -96,16 +116,16 @@ app.get("/api/football/matches", async (req, res) => {
     }
 
     // ===============================
-    // 2️⃣ CACHE FIRESTORE
+    // 2️⃣ FIRESTORE
     // ===============================
     const cacheRef = db.collection("football_cache").doc(cacheId);
     const cached = await cacheRef.get();
 
     if (cached.exists) {
       console.log("📦 Matchs depuis Firestore");
-
       const matches = cached.data().matches || [];
-      writeLocalCache(cacheId, matches); // synchro local
+
+      writeLocalCache(cacheId, matches);
 
       return res.json({
         source: "firestore-cache",
@@ -150,9 +170,6 @@ app.get("/api/football/matches", async (req, res) => {
       }
     }));
 
-    // ===============================
-    // 💾 SAUVEGARDES
-    // ===============================
     await cacheRef.set({
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       matches
@@ -160,9 +177,7 @@ app.get("/api/football/matches", async (req, res) => {
 
     writeLocalCache(cacheId, matches);
 
-    console.log("💾 Matchs sauvegardés (Firestore + Local)");
-
-    res.json({
+    return res.json({
       source: "football-data.org",
       from: dateFrom,
       to: dateTo,
@@ -171,13 +186,13 @@ app.get("/api/football/matches", async (req, res) => {
     });
 
   } catch (error) {
-  console.error("❌ Football error:", error.message);
+    console.error("❌ Erreur Football :", error.message);
 
-  // 🔁 TENTATIVE CACHE LOCAL EN DERNIER RECOURS
-  try {
+    // ===============================
+    // 🆘 FALLBACK LOCAL
+    // ===============================
     const fallback = readLocalCache(cacheId);
     if (fallback) {
-      console.log("🆘 Fallback cache LOCAL après erreur");
       return res.json({
         source: "local-cache-fallback",
         from: dateFrom,
@@ -186,19 +201,16 @@ app.get("/api/football/matches", async (req, res) => {
         matches: fallback
       });
     }
-  } catch (e) {
-    console.error("❌ Cache local indisponible");
-  }
 
-  res.status(503).json({
-    error: "Toutes les sources sont indisponibles",
-    details: error.message
-  });
- }
+    res.status(503).json({
+      error: "Toutes les sources sont indisponibles",
+      details: error.message
+    });
+  }
 });
 
 // ===============================
-// 🚀 LANCEMENT SERVEUR
+// 🚀 Serveur
 // ===============================
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
