@@ -171,13 +171,30 @@ app.get("/api/football/matches", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Football error:", error.message);
+  console.error("❌ Football error:", error.message);
 
-    res.status(503).json({
-      error: "Données indisponibles",
-      message: error.message
-    });
+  // 🔁 TENTATIVE CACHE LOCAL EN DERNIER RECOURS
+  try {
+    const fallback = readLocalCache(cacheId);
+    if (fallback) {
+      console.log("🆘 Fallback cache LOCAL après erreur");
+      return res.json({
+        source: "local-cache-fallback",
+        from: dateFrom,
+        to: dateTo,
+        total: fallback.length,
+        matches: fallback
+      });
+    }
+  } catch (e) {
+    console.error("❌ Cache local indisponible");
   }
+
+  res.status(503).json({
+    error: "Toutes les sources sont indisponibles",
+    details: error.message
+  });
+ }
 });
 
 // ===============================
