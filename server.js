@@ -4,14 +4,13 @@
 import express from "express";
 import axios from "axios";
 import cors from "cors";
-import fs from "fs";
-import path from "path";
+import footballRoutes from "./routes/football.js";
 import { admin, initFirebase } from "./firebase.js";
 
 // ===============================
-// 🔐 Firebase
+// 🔐 Initialisation Firebase
 // ===============================
-initFirebase();
+initFirebase(); // S'assure que Firebase est initialisé
 const db = admin.firestore();
 
 // ===============================
@@ -20,69 +19,13 @@ const db = admin.firestore();
 const app = express();
 app.use(cors({ origin: "*" }));
 app.use(express.json());
+app.use("/api/football", footballRoutes);
 
 // ===============================
-// 📁 CACHE LOCAL (PC)
-// ===============================
-const CACHE_DIR = "D:/lotopredict-backend/cache";
-const LOCAL_CACHE_FILE = path.join(CACHE_DIR, "football-matches.json");
-const CACHE_TTL = 1000 * 60 * 60 * 6; // 6 heures
-
-function ensureCacheDir() {
-  if (!fs.existsSync(CACHE_DIR)) {
-    fs.mkdirSync(CACHE_DIR, { recursive: true });
-  }
-}
-
-function readLocalCache(cacheId) {
-  try {
-    if (!fs.existsSync(LOCAL_CACHE_FILE)) return null;
-
-    const raw = fs.readFileSync(LOCAL_CACHE_FILE, "utf-8");
-    const data = JSON.parse(raw);
-
-    if (data.cacheId !== cacheId) return null;
-
-    const age = Date.now() - data.timestamp;
-    if (age > CACHE_TTL) {
-      console.log("🕒 Cache local expiré");
-      return null;
-    }
-
-    console.log("💾 Matchs chargés depuis le cache LOCAL (PC)");
-    return data.matches;
-  } catch (e) {
-    console.error("❌ Erreur lecture cache local :", e.message);
-    return null;
-  }
-}
-
-function writeLocalCache(cacheId, matches) {
-  try {
-    ensureCacheDir();
-    fs.writeFileSync(
-      LOCAL_CACHE_FILE,
-      JSON.stringify(
-        {
-          cacheId,
-          timestamp: Date.now(),
-          matches
-        },
-        null,
-        2
-      )
-    );
-    console.log("💽 Cache local sauvegardé sur le PC");
-  } catch (e) {
-    console.error("❌ Erreur écriture cache local :", e.message);
-  }
-}
-
-// ===============================
-// 📅 Dates
+// 📅 Utilitaire date
 // ===============================
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
 function tomorrowKey() {
@@ -92,59 +35,33 @@ function tomorrowKey() {
 }
 
 // ===============================
-// ⚽ MATCHS FOOTBALL
-// LOCAL → FIRESTORE → API
+// ⚽ MATCHS FOOT (AUJOURD’HUI + DEMAIN) avec cache Firestore
 // ===============================
 app.get("/api/football/matches", async (req, res) => {
-  const dateFrom = todayKey();
-  const dateTo = tomorrowKey();
-  const cacheId = `${dateFrom}-${dateTo}`;
-
   try {
-    // ===============================
-    // 1️⃣ CACHE LOCAL
-    // ===============================
-    const localMatches = readLocalCache(cacheId);
-    if (localMatches) {
-      return res.json({
-        source: "local-cache",
-        from: dateFrom,
-        to: dateTo,
-        total: localMatches.length,
-        matches: localMatches
-      });
-    }
+    const API_KEY = process.env.FOOTBALL_DATA_API_KEY;
+    if (!API_KEY) return res.status(500).json({ error: "Clé API football manquante" });
 
-    // ===============================
-    // 2️⃣ FIRESTORE
-    // ===============================
+    const cacheId = `${todayKey()}-${tomorrowKey()}`;
     const cacheRef = db.collection("football_cache").doc(cacheId);
+
+    // 🔹 Vérifie le cache Firestore
     const cached = await cacheRef.get();
-
     if (cached.exists) {
-      console.log("📦 Matchs depuis Firestore");
-      const matches = cached.data().matches || [];
-
-      writeLocalCache(cacheId, matches);
-
+      console.log("📦 Matchs chargés depuis Firestore");
       return res.json({
         source: "firestore-cache",
-        from: dateFrom,
-        to: dateTo,
-        total: matches.length,
-        matches
+        from: todayKey(),
+        to: tomorrowKey(),
+        total: cached.data().matches.length,
+        matches: cached.data().matches
       });
     }
 
-    // ===============================
-    // 3️⃣ API FOOTBALL-DATA
-    // ===============================
-    const API_KEY = process.env.FOOTBALL_DATA_API_KEY;
-    if (!API_KEY) {
-      return res.status(500).json({ error: "Clé API football manquante" });
-    }
-
+    // 🔹 Sinon appel Football-Data.org
     console.log("🌐 Requête football-data.org");
+    const dateFrom = todayKey();
+    const dateTo = tomorrowKey();
 
     const response = await axios.get(
       `https://api.football-data.org/v4/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`,
@@ -170,14 +87,14 @@ app.get("/api/football/matches", async (req, res) => {
       }
     }));
 
+    // 🔹 Sauvegarde dans Firestore pour la journée
     await cacheRef.set({
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       matches
     });
+    console.log("💾 Matchs sauvegardés dans Firestore");
 
-    writeLocalCache(cacheId, matches);
-
-    return res.json({
+    res.json({
       source: "football-data.org",
       from: dateFrom,
       to: dateTo,
@@ -186,31 +103,16 @@ app.get("/api/football/matches", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Erreur Football :", error.message);
-
-    // ===============================
-    // 🆘 FALLBACK LOCAL
-    // ===============================
-    const fallback = readLocalCache(cacheId);
-    if (fallback) {
-      return res.json({
-        source: "local-cache-fallback",
-        from: dateFrom,
-        to: dateTo,
-        total: fallback.length,
-        matches: fallback
-      });
-    }
-
-    res.status(503).json({
-      error: "Toutes les sources sont indisponibles",
-      details: error.message
+    console.error("❌ Football API error:", error.response?.status || error.message);
+    res.status(500).json({
+      error: "Impossible de récupérer les matchs",
+      details: error.response?.data || error.message
     });
   }
 });
 
 // ===============================
-// 🚀 Serveur
+// 🚀 LANCEMENT SERVEUR
 // ===============================
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
